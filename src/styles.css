@@ -1,0 +1,130 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+
+  --color-ink: #0a0e14;
+  --color-ink-2: #0f141c;
+  --color-surface: #141b26;
+  --color-surface-2: #1a2330;
+  --color-line: #243044;
+  --color-fog: #e8edf5;
+  --color-mist: #8b95a8;
+  --color-teal: #2dd4bf;
+  --color-teal-dim: #1aa392;
+  --color-gold: #e8b86d;
+  --color-danger: #f07167;
+  --color-ok: #5ee0a0;
+
+  --color-class-warrior: #f07167;
+  --color-class-archer: #5ee0a0;
+  --color-class-mage: #6eb6ff;
+  --color-class-priest: #e8b86d;
+  --color-class-defense: #b9a0ff;
+
+  --color-r0: #8b95a8;
+  --color-r1: #5ee0a0;
+  --color-r2: #6eb6ff;
+  --color-r3: #b9a0ff;
+  --color-r4: #e8b86d;
+  --color-r5: #f07167;
+
+  --color-grade-0: #e8edf5;
+  --color-grade-1: #76b9e9;
+  --color-grade-2: #fa5dbf;
+  --color-grade-3: #fae75d;
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+}
+
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  html,
+  body,
+  #app {
+    min-height: 100%;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background: var(--color-ink);
+    color: var(--color-fog);
+    font-family: var(--font-sans);
+    line-height: 1.5;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  html[data-contrast="true"] {
+    --color-mist: #c5ccd8;
+    --color-line: #3a4a62;
+  }
+
+  html[data-light="true"] {
+    --color-ink: #eef2f6;
+    --color-ink-2: #e4eaf1;
+    --color-surface: #ffffff;
+    --color-surface-2: #f5f7fa;
+    --color-line: #cbd5e1;
+    --color-fog: #172033;
+    --color-mist: #5f6b7c;
+    --color-teal: #0f8276;
+    --color-teal-dim: #0c6c63;
+  }
+
+  html[data-compact="true"] .eq-slot {
+    min-height: 4.5rem;
+    padding: 0.4rem;
+  }
+
+  /* Table headers stay in normal flow. A viewport-level sticky offset pushed
+     short tables below the app bar and covered their first data row. */
+  thead.sticky-head th {
+    position: static;
+    background: var(--color-ink-2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.pixel {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.xp-fill {
+  transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+[cmdk-group-heading] {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-mist);
+}

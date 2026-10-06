@@ -1,0 +1,34 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { AlertCircle, CheckCircle2, Coins, ListChecks, ShoppingCart } from "lucide-react";
+import { fetchers, qk } from "@/lib/solaria/query";
+import { formatGold, unitPrice } from "@/lib/solaria/format";
+import { Button } from "@/components/ui/button";
+import { buildItemIndex, findItem } from "@/lib/solaria/equip";
+import { inspectItem, instanceFromOffer } from "@/lib/solaria/tooltip";
+import { itemLabel } from "@/lib/solaria/item-display";
+import { ItemImg } from "@/components/item-img";
+import { ItemHotspot } from "@/components/item-modal";
+import { usePrefs } from "@/lib/solaria/store";
+import type { CatalogItem, Offer } from "@/lib/solaria/types";
+
+export const Route = createFileRoute("/planner")({ component: Planner });
+const SLOTS = ["Head","Chest","Legs","Foot","Hand","Hand2","Belt","Shield","Necklace","Ring","Bag"];
+const CLASSES = ["Warrior","Archer","Mage","Priest","Defense"];
+type Pick = { offer: Offer; rec: CatalogItem; level: number; price: number; score: number };
+
+function Planner() {
+  const lang=usePrefs((s)=>s.lang), mainPlayer=usePrefs((s)=>s.mainPlayer);
+  const market=useQuery({queryKey:qk.market(),queryFn:fetchers.market}), items=useQuery({queryKey:qk.items(),queryFn:fetchers.items});
+  const player=useQuery({queryKey:qk.player(mainPlayer),queryFn:()=>fetchers.player(mainPlayer),enabled:Boolean(mainPlayer)});
+  const index=useMemo(()=>items.data?buildItemIndex(items.data):null,[items.data]);
+  const [cls,setCls]=useState("Archer"),[focus,setFocus]=useState("balanced"),[budget,setBudget]=useState(""),[target,setTarget]=useState("");
+  const automaticTier=useMemo(()=>{if(!index)return 0;const current=player.data?.level??0;const levels=(market.data?.offers??[]).map(offer=>{const rec=findItem(index,offer.item);if(!rec)return 0;const ins=inspectItem(rec,instanceFromOffer(offer),lang);const compatible=!ins.classReq||ins.classReq===cls||(ins.classReq==="Hunter"&&cls==="Archer");return compatible&&ins.level>current?ins.level:0;}).filter(Boolean);return levels.length?Math.min(...levels):0;},[index,market.data,player.data?.level,lang,cls]);
+  const targetLevel=Number(target)||automaticTier||Math.ceil(((player.data?.level??1)+1)/10)*10, max=Number(budget)||Infinity;
+  const plan=useMemo(()=>SLOTS.map(slot=>{
+    const candidates:Pick[]=[]; if(index) for(const offer of market.data?.offers??[]){const rec=findItem(index,offer.item);if(!rec||rec.eq?.cat!==slot)continue;const ins=inspectItem(rec,instanceFromOffer(offer),lang);const compatible=!ins.classReq||ins.classReq===cls||(ins.classReq==="Hunter"&&cls==="Archer");if(!compatible||ins.level!==targetLevel)continue;const price=unitPrice(offer.gold,offer.amount)??Infinity;if(price>max)continue;const eq=rec.eq??{};const bonus=focus==="defense"?Number(eq.def??0)*4:focus==="farm"?Number(eq.speed??0)*3:focus==="pvp"?Number(eq.crit??0)*3:Number(eq.melee??0)+Number(eq.magic??0)+Number(eq.dist??0);candidates.push({offer,rec,level:ins.level,price,score:ins.level+(offer.rank??0)*10+(offer.rarety??offer.rarity??0)*20+bonus});} candidates.sort((a,b)=>b.score-a.score||a.price-b.price);return{slot,best:candidates[0]??null};}),[index,market.data,lang,cls,focus,targetLevel,max]);
+  const chosen=plan.filter((row):row is {slot:string;best:Pick}=>Boolean(row.best)), total=chosen.reduce((sum,row)=>sum+row.best.price,0);let order=0;
+  return <div className="space-y-4"><section className="rounded-lg border border-line bg-surface p-5"><div className="flex items-center gap-2 text-teal"><ListChecks className="size-5"/><span className="text-xs font-bold uppercase tracking-wider">Build planner completo</span></div><h2 className="mt-1 font-display text-2xl font-semibold">Monte o próximo set por prioridade</h2><p className="mt-1 text-sm text-mist">Escolha classe, foco, tier e orçamento. O plano mostra custo, ordem e slots faltantes.</p><div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><select value={cls} onChange={e=>setCls(e.target.value)} className="min-h-11 rounded-md border border-line bg-ink px-3">{CLASSES.map(value=><option key={value}>{value}</option>)}</select><select value={focus} onChange={e=>setFocus(e.target.value)} className="min-h-11 rounded-md border border-line bg-ink px-3"><option value="balanced">Equilibrado</option><option value="pvp">PvP</option><option value="defense">Defesa</option><option value="farm">Farm</option></select><input type="number" value={target} onChange={e=>setTarget(e.target.value)} placeholder={`Tier alvo: ${targetLevel}`} className="min-h-11 rounded-md border border-line bg-ink px-3"/><input type="number" value={budget} onChange={e=>setBudget(e.target.value)} placeholder="Orçamento por item" className="min-h-11 rounded-md border border-line bg-ink px-3"/></div></section><div className="grid gap-3 sm:grid-cols-3"><Metric icon={ShoppingCart} label="Slots encontrados" value={`${chosen.length}/${SLOTS.length}`}/><Metric icon={Coins} label="Custo estimado" value={formatGold(total)}/><Metric icon={CheckCircle2} label="Tier alvo" value={`Lv ${targetLevel}`}/></div><section className="rounded-lg border border-line bg-surface"><div className="border-b border-line p-4"><h3 className="font-semibold">Ordem recomendada de compra</h3></div><div className="divide-y divide-line">{plan.map(row=>{if(!row.best)return <div key={row.slot} className="flex items-center gap-3 p-4 text-sm text-mist"><AlertCircle className="size-4 text-danger"/><strong className="w-24 text-fog">{row.slot}</strong>Nenhum item compatível no tier/orçamento.</div>;order++;const pick=row.best;return <div key={row.slot} className="flex flex-wrap items-center gap-3 p-4"><span className="grid size-8 place-items-center rounded-md bg-teal/10 text-sm font-bold text-teal">{order}</span><ItemHotspot itemId={pick.rec.id} instance={instanceFromOffer(pick.offer)}><ItemImg icon={pick.rec.icon} name={pick.rec.itemName}/></ItemHotspot><div className="min-w-40 flex-1"><div className="text-xs uppercase text-mist">{row.slot} · Lv {pick.level}</div><strong>{itemLabel(pick.offer.item,pick.rec)}</strong><div className="text-xs text-mist">{pick.offer.player} · {pick.offer.server}</div></div><span className="font-semibold text-gold">{formatGold(pick.price)}</span></div>})}</div></section><div className="flex gap-2"><Link to="/market" search={{sort:"unit"}}><Button variant="primary">Abrir Mercado</Button></Link><Link to="/my-character"><Button>Meu personagem</Button></Link></div></div>;
+}
+function Metric({icon:Icon,label,value}:{icon:typeof Coins;label:string;value:string}){return <div className="flex items-center gap-3 rounded-lg border border-line bg-surface p-4"><Icon className="size-5 text-teal"/><div><div className="text-xs text-mist">{label}</div><strong className="tabular-nums">{value}</strong></div></div>}

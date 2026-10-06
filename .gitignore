@@ -1,0 +1,23 @@
+node_modules/
+.tanstack/
+.vercel/
+.grok/
+dist/
+.output/
+
+artifacts/
+attachments/
+screenshots/
+
+.env
+.env.*
+!.env.example
+
+*.log
+.node_modules.lock
+.DS_Store
+Thumbs.db
+
+# Instruções locais do ambiente de desenvolvimento
+AGENTS.md
+AGENTS.project.md
